@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "npm run dev",
+      "npm run build",
+      "npm run lint",
+      "npx tsc --noEmit",
+      "npx supabase *"
+    ],
+    "deny": [
+      "rm -rf",
+      "npm publish",
+      "npx supabase db reset --linked"
+    ]
+  }
+}
