@@ -1,29 +1,31 @@
 import styles from "./Table.module.css";
 
-interface Column<T> {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+interface Column {
   key: string;
   header: string;
-  render?: (item: T) => React.ReactNode;
+  render?: (item: any) => React.ReactNode;
   align?: "left" | "center" | "right";
 }
 
-interface TableProps<T> {
-  columns: Column<T>[];
-  data: T[];
+interface TableProps {
+  columns: Column[];
+  data: any[];
   emptyMessage?: string;
   emptyIcon?: string;
   striped?: boolean;
-  onRowClick?: (item: T) => void;
+  onRowClick?: (item: any) => void;
 }
 
-export function Table<T extends Record<string, unknown>>({
+export function Table({
   columns,
   data,
   emptyMessage = "No data found",
   emptyIcon = "📋",
   striped = false,
   onRowClick,
-}: TableProps<T>) {
+}: TableProps) {
   if (data.length === 0) {
     return (
       <div className={styles["table-container"]}>

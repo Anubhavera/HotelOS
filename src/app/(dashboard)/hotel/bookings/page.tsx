@@ -64,7 +64,7 @@ export default function BookingsPage() {
     {
       key: "rooms",
       header: "Room",
-      render: (b: Booking) => (b as Record<string, unknown> & { rooms?: { room_number: string } }).rooms?.room_number || "—",
+      render: (b: any) => b.rooms?.room_number || "—",
     },
     { key: "guest_name", header: "Guest" },
     { key: "guest_phone", header: "Phone" },
