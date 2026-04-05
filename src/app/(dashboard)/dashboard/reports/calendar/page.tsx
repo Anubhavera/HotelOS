@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useOrg } from "@/hooks/useOrg";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import dashStyles from "../../../dashboard.module.css";
+import { CalendarDays } from "lucide-react";
 
 export default function CalendarPage() {
   const { org } = useOrg();
@@ -168,7 +169,7 @@ export default function CalendarPage() {
               </>
             ) : (
               <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--text-tertiary)" }}>
-                <div style={{ fontSize: "2rem", marginBottom: "var(--space-3)" }}>📅</div>
+                <div style={{ fontSize: "2rem", marginBottom: "var(--space-3)" }}><CalendarDays size={24}/></div>
                 <p>Click on a date to see details</p>
               </div>
             )}

@@ -2,12 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { 
+  LayoutDashboard, 
+  Hotel, 
+  UtensilsCrossed, 
+  Banknote, 
+  Receipt, 
+  Zap, 
+  LineChart, 
+  CalendarDays, 
+  Settings, 
+  Users 
+} from "lucide-react";
+import { IconBox, IconBoxColor } from "@/components/ui/IconBox";
 import styles from "./Sidebar.module.css";
 
 interface NavItem {
   href: string;
   label: string;
-  icon: string;
+  icon: React.ElementType;
+  color: IconBoxColor;
 }
 
 interface NavSection {
@@ -20,38 +34,38 @@ const navSections: NavSection[] = [
   {
     title: "Overview",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "📊" },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "blue" },
     ],
   },
   {
     title: "Operations",
     items: [
-      { href: "/dashboard/hotel", label: "Hotel Rooms", icon: "🏨" },
-      { href: "/dashboard/restaurant", label: "Restaurant", icon: "🍽️" },
+      { href: "/dashboard/hotel", label: "Hotel Rooms", icon: Hotel, color: "gold" },
+      { href: "/dashboard/restaurant", label: "Restaurant", icon: UtensilsCrossed, color: "orange" },
     ],
   },
   {
     title: "Finance",
     items: [
-      { href: "/dashboard/salaries", label: "Salaries", icon: "💰" },
-      { href: "/dashboard/expenses", label: "Expenses", icon: "🧾" },
-      { href: "/dashboard/expenses/utilities", label: "Utility Bills", icon: "⚡" },
+      { href: "/dashboard/salaries", label: "Salaries", icon: Banknote, color: "green" },
+      { href: "/dashboard/expenses", label: "Expenses", icon: Receipt, color: "red" },
+      { href: "/dashboard/expenses/utilities", label: "Utility Bills", icon: Zap, color: "blue" },
     ],
     requiredRole: ["owner", "manager"],
   },
   {
     title: "Reports",
     items: [
-      { href: "/dashboard/reports", label: "Month End", icon: "📈" },
-      { href: "/dashboard/reports/calendar", label: "Calendar", icon: "📅" },
+      { href: "/dashboard/reports", label: "Month End", icon: LineChart, color: "purple" },
+      { href: "/dashboard/reports/calendar", label: "Calendar", icon: CalendarDays, color: "red" },
     ],
     requiredRole: ["owner", "manager"],
   },
   {
     title: "Settings",
     items: [
-      { href: "/dashboard/settings", label: "Organization", icon: "⚙️" },
-      { href: "/dashboard/settings/staff", label: "Staff", icon: "👥" },
+      { href: "/dashboard/settings", label: "Organization", icon: Settings, color: "slate" },
+      { href: "/dashboard/settings/staff", label: "Staff", icon: Users, color: "blue" },
     ],
     requiredRole: ["owner"],
   },
@@ -118,7 +132,7 @@ export function Sidebar({
                     onClick={onClose}
                   >
                     <span className={styles["sidebar__link-icon"]}>
-                      {item.icon}
+                      <IconBox icon={item.icon} color={item.color} size="sm" />
                     </span>
                     {item.label}
                   </Link>

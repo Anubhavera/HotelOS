@@ -35,9 +35,11 @@
 }
 
 .sidebar__brand-name {
-  font-size: var(--text-lg);
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .sidebar__brand-org {
@@ -85,7 +87,20 @@
 
 .sidebar__link--active {
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-dark);
+  position: relative;
+}
+
+.sidebar__link--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 3px;
+  background-color: var(--color-primary);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px var(--color-primary-subtle);
 }
 
 .sidebar__link-icon {

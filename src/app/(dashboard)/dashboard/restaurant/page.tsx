@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, timeAgo } from "@/lib/utils/formatters";
 import type { RestaurantOrder } from "@/types/database";
 import dashStyles from "../../dashboard.module.css";
+import { ClipboardList, BarChart3, UtensilsCrossed } from "lucide-react";
 
 export default function RestaurantPage() {
   const { org } = useOrg();
@@ -52,10 +53,10 @@ export default function RestaurantPage() {
         </div>
         <div className={dashStyles["page-header__actions"]}>
           <Button variant="secondary" onClick={() => window.location.href = "/dashboard/restaurant/menu"}>
-            📋 Menu
+            <ClipboardList className="inline-block mr-2" size={20}/> Menu
           </Button>
           <Button variant="secondary" onClick={() => window.location.href = "/dashboard/restaurant/sales"}>
-            📊 Sales Report
+            <BarChart3 className="inline-block mr-2" size={20}/> Sales Report
           </Button>
           <Button onClick={() => window.location.href = "/dashboard/restaurant/new-order"}>
             + New Order
@@ -86,7 +87,7 @@ export default function RestaurantPage() {
         <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} />
       ) : orders.length === 0 ? (
         <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--text-tertiary)" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "var(--space-4)" }}>🍽️</div>
+          <div style={{ fontSize: "3rem", marginBottom: "var(--space-4)" }}><UtensilsCrossed size={24}/></div>
           <h3 style={{ color: "var(--text-primary)", marginBottom: "var(--space-2)" }}>No orders today</h3>
           <p>Create your first order to start tracking sales</p>
         </div>

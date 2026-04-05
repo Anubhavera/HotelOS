@@ -13,6 +13,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { DEPARTMENTS } from "@/lib/utils/constants";
 import type { Salary } from "@/types/database";
 import dashStyles from "../../dashboard.module.css";
+import { Banknote } from "lucide-react";
 
 export default function SalariesPage() {
   const { org } = useOrg();
@@ -135,7 +136,7 @@ export default function SalariesPage() {
       {loading ? (
         <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} />
       ) : (
-        <Table columns={columns} data={salaries as unknown as Record<string, unknown>[]} emptyMessage="No salary entries for this month" emptyIcon="💰" />
+        <Table columns={columns} data={salaries as unknown as Record<string, unknown>[]} emptyMessage="No salary entries for this month" emptyIcon={<Banknote size={48} className="opacity-50" />} />
       )}
 
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Salary Entry" footer={

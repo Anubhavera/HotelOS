@@ -13,7 +13,7 @@ interface TableProps {
   columns: Column[];
   data: any[];
   emptyMessage?: string;
-  emptyIcon?: string;
+  emptyIcon?: string | React.ReactNode;
   striped?: boolean;
   onRowClick?: (item: any) => void;
 }

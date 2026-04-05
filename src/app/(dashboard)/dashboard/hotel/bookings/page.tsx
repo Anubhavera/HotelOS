@@ -10,6 +10,7 @@ import { showToast } from "@/components/ui/Toast";
 import { formatCurrency, formatDateTime } from "@/lib/utils/formatters";
 import type { Booking } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
+import { ClipboardList } from "lucide-react";
 
 export default function BookingsPage() {
   const { org } = useOrg();
@@ -120,7 +121,7 @@ export default function BookingsPage() {
           columns={columns}
           data={bookings as unknown as Record<string, unknown>[]}
           emptyMessage="No bookings yet"
-          emptyIcon="📋"
+          emptyIcon={<ClipboardList size={48} className="opacity-50" />}
         />
       )}
     </>

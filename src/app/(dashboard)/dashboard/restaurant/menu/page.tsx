@@ -11,6 +11,7 @@ import { formatCurrency } from "@/lib/utils/formatters";
 import { MENU_CATEGORIES } from "@/lib/utils/constants";
 import type { MenuItem } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
+import { Trash2 } from "lucide-react";
 
 export default function MenuPage() {
   const { org } = useOrg();
@@ -106,7 +107,7 @@ export default function MenuPage() {
                       <Button size="sm" variant="ghost" onClick={() => toggleAvailability(item)}>
                         {item.is_available ? "✓" : "✕"}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteItem(item.id)}>🗑</Button>
+                      <Button size="sm" variant="ghost" onClick={() => deleteItem(item.id)}><Trash2 className="inline-block mr-2" size={16}/></Button>
                     </div>
                   </div>
                 </div>

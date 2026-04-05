@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils/formatters";
 import { PAYMENT_MODES, ORDER_TYPES } from "@/lib/utils/constants";
 import type { MenuItem } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
+import { Receipt } from "lucide-react";
 
 interface CartItem {
   menu_item_id: string;
@@ -218,7 +219,7 @@ export default function NewOrderPage() {
             top: "calc(var(--header-height) + var(--space-6))",
           }}>
             <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 600, marginBottom: "var(--space-4)" }}>
-              🧾 Order Summary
+              <Receipt className="inline-block mr-2" size={20}/> Order Summary
             </h3>
 
             {cart.length === 0 ? (

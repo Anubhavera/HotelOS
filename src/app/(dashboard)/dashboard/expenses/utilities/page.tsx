@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { BILL_TYPES } from "@/lib/utils/constants";
 import type { UtilityBill } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
+import { Zap, Droplet, Flame, Wifi, FileText } from "lucide-react";
 
 export default function UtilitiesPage() {
   const { org } = useOrg();
@@ -70,8 +71,12 @@ export default function UtilitiesPage() {
     fetchBills();
   }
 
-  const billIcons: Record<string, string> = {
-    electricity: "⚡", water: "💧", gas: "🔥", internet: "🌐", other: "📄",
+  const billIcons: Record<string, React.ReactNode> = {
+    electricity: <Zap className="inline-block mr-2" size={20}/>, 
+    water: <Droplet className="inline-block mr-2" size={20}/>, 
+    gas: <Flame className="inline-block mr-2" size={20}/>, 
+    internet: <Wifi className="inline-block mr-2" size={20}/>, 
+    other: <FileText className="inline-block mr-2" size={20}/>,
   };
 
   const totalPending = bills.filter((b) => !b.paid).reduce((s, b) => s + b.amount, 0);
@@ -102,7 +107,7 @@ export default function UtilitiesPage() {
         <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} />
       ) : bills.length === 0 ? (
         <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--text-tertiary)" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "var(--space-4)" }}>⚡</div>
+          <div style={{ fontSize: "3rem", marginBottom: "var(--space-4)" }}><Zap size={24}/></div>
           <h3 style={{ color: "var(--text-primary)" }}>No utility bills yet</h3>
         </div>
       ) : (

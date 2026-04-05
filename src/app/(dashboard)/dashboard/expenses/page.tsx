@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { EXPENSE_CATEGORIES } from "@/lib/utils/constants";
 import type { Expense } from "@/types/database";
 import dashStyles from "../../dashboard.module.css";
+import { Receipt, Zap } from "lucide-react";
 
 export default function ExpensesPage() {
   const { org } = useOrg();
@@ -99,7 +100,7 @@ export default function ExpensesPage() {
         </div>
         <div className={dashStyles["page-header__actions"]}>
           <Button variant="secondary" onClick={() => window.location.href = "/dashboard/expenses/utilities"}>
-            ⚡ Utility Bills
+            <Zap className="inline-block mr-2" size={20}/> Utility Bills
           </Button>
           <input type="month" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} style={{
             padding: "var(--space-3) var(--space-4)", background: "var(--bg-secondary)", border: "1px solid var(--border-default)",
@@ -126,7 +127,7 @@ export default function ExpensesPage() {
       {loading ? (
         <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} />
       ) : (
-        <Table columns={columns} data={expenses as unknown as Record<string, unknown>[]} emptyMessage="No expenses this month" emptyIcon="🧾" />
+        <Table columns={columns} data={expenses as unknown as Record<string, unknown>[]} emptyMessage="No expenses this month" emptyIcon={<Receipt size={48} className="opacity-50" />} />
       )}
 
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Expense" footer={

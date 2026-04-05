@@ -1,5 +1,6 @@
 import Link from "next/link";
 import styles from "./landing.module.css";
+import { Hotel, UtensilsCrossed, Banknote, Receipt, Zap, BarChart3, Smartphone, Lock, Rocket, Heart } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -18,7 +19,7 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className={styles.hero}>
-        <div className={styles.hero__badge}>🚀 Built for Indian Hotels & Restaurants</div>
+        <div className={styles.hero__badge}><Rocket className="inline-block mr-2" size={20}/> Built for Indian Hotels & Restaurants</div>
         <h1 className={styles.hero__title}>
           Your Hotel & Restaurant,<br />
           <span className={styles.hero__gradient}>Fully Transparent.</span>
@@ -38,14 +39,14 @@ export default function LandingPage() {
         <h2 className={styles.features__title}>Everything you need to run your business</h2>
         <div className={styles.features__grid}>
           {[
-            { icon: "🏨", title: "Hotel Rooms", desc: "Check-in/out, room status, guest details, payment tracking with proof uploads" },
-            { icon: "🍽️", title: "Restaurant POS", desc: "KOT management, menu items, sales reports, cancellation tracking with owner alerts" },
-            { icon: "💰", title: "Salaries", desc: "Track employee salaries by department, mark as paid, monthly totals" },
-            { icon: "🧾", title: "Expenses", desc: "Item name, price, quantity, date, bill proof — everything accounted for" },
-            { icon: "⚡", title: "Utility Bills", desc: "Electricity, water, gas bills with paid/unpaid toggle and due dates" },
-            { icon: "📊", title: "Month-End Reports", desc: "Revenue vs expenses, profit/loss, weekly breakdown, calendar heatmap" },
-            { icon: "📱", title: "Mobile Ready", desc: "Install as an app on your phone. Works offline. No app store needed" },
-            { icon: "🔒", title: "Secure & Private", desc: "Each organization's data is completely isolated. Your data stays yours" },
+            { icon: <Hotel size={24} className="text-primary" />, title: "Hotel Rooms", desc: "Check-in/out, room status, guest details, payment tracking with proof uploads" },
+            { icon: <UtensilsCrossed size={24} className="text-primary" />, title: "Restaurant POS", desc: "KOT management, menu items, sales reports, cancellation tracking with owner alerts" },
+            { icon: <Banknote size={24} className="text-primary" />, title: "Salaries", desc: "Track employee salaries by department, mark as paid, monthly totals" },
+            { icon: <Receipt size={24} className="text-primary" />, title: "Expenses", desc: "Item name, price, quantity, date, bill proof — everything accounted for" },
+            { icon: <Zap size={24} className="text-primary" />, title: "Utility Bills", desc: "Electricity, water, gas bills with paid/unpaid toggle and due dates" },
+            { icon: <BarChart3 size={24} className="text-primary" />, title: "Month-End Reports", desc: "Revenue vs expenses, profit/loss, weekly breakdown, calendar heatmap" },
+            { icon: <Smartphone size={24} className="text-primary" />, title: "Mobile Ready", desc: "Install as an app on your phone. Works offline. No app store needed" },
+            { icon: <Lock size={24} className="text-primary" />, title: "Secure & Private", desc: "Each organization's data is completely isolated. Your data stays yours" },
           ].map((f) => (
             <div key={f.title} className={styles.feature__card}>
               <div className={styles.feature__icon}>{f.icon}</div>
@@ -65,7 +66,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className={styles.footer}>
-        <p>© {new Date().getFullYear()} HotelOS. Built with ❤️ for the hospitality industry.</p>
+        <p>© {new Date().getFullYear()} HotelOS. Built with <Heart className="inline-block mr-2" size={16}/> for the hospitality industry.</p>
       </footer>
     </div>
   );

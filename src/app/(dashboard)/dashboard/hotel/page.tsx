@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/utils/formatters";
 import { ROOM_TYPES } from "@/lib/utils/constants";
 import type { Room } from "@/types/database";
 import dashStyles from "../../dashboard.module.css";
+import { Hotel } from "lucide-react";
 
 export default function HotelPage() {
   const { org } = useOrg();
@@ -91,7 +92,7 @@ export default function HotelPage() {
                 window.location.href = `/dashboard/hotel/check-in?room=${nextAvailable.id}`;
               }}
             >
-              🏨 Next Empty: Room {nextAvailable.room_number}
+              <Hotel className="inline-block mr-2" size={20}/> Next Empty: Room {nextAvailable.room_number}
             </Button>
           )}
           <Button onClick={() => setShowAddModal(true)}>+ Add Room</Button>
@@ -110,7 +111,7 @@ export default function HotelPage() {
         </div>
       ) : rooms.length === 0 ? (
         <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--text-tertiary)" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "var(--space-4)" }}>🏨</div>
+          <div style={{ fontSize: "3rem", marginBottom: "var(--space-4)" }}><Hotel size={24}/></div>
           <h3 style={{ color: "var(--text-primary)", marginBottom: "var(--space-2)" }}>No rooms yet</h3>
           <p>Add your hotel rooms to get started with check-ins</p>
         </div>

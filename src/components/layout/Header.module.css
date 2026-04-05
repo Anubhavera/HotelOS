@@ -4,7 +4,9 @@
   right: 0;
   left: var(--sidebar-width);
   height: var(--header-height);
-  background: var(--bg-elevated);
+  background: rgba(255, 255, 255, 0.85); /* Slightly transparent elevated background */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
@@ -37,7 +39,8 @@
 }
 
 .header__title {
-  font-size: var(--text-xl);
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
   font-weight: 600;
   color: var(--text-primary);
 }

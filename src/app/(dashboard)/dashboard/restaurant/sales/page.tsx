@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import type { RestaurantOrder } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
+import { BarChart3 } from "lucide-react";
 
 export default function SalesPage() {
   const { org } = useOrg();
@@ -112,7 +113,7 @@ export default function SalesPage() {
       {loading ? (
         <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} />
       ) : (
-        <Table columns={columns} data={orders as unknown as Record<string, unknown>[]} emptyMessage="No sales for this date" emptyIcon="📊" />
+        <Table columns={columns} data={orders as unknown as Record<string, unknown>[]} emptyMessage="No sales for this date" emptyIcon={<BarChart3 size={48} className="opacity-50" />} />
       )}
     </>
   );

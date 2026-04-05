@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils/formatters";
 import styles from "../dashboard.module.css";
+import { Hotel, UtensilsCrossed, TrendingUp, Receipt } from "lucide-react";
+import { IconBox } from "@/components/ui/IconBox";
 
 async function getDashboardStats(orgId: string) {
   const supabase = await createClient();
@@ -103,7 +105,7 @@ export default async function DashboardPage() {
     <>
       <div className={styles["stats-grid"]}>
         <div className={styles["stat-card"]}>
-          <div className={styles["stat-card__icon"]}>🏨</div>
+          <IconBox icon={Hotel} color="gold" size="xl" className={styles["stat-card__icon"]} />
           <div className={styles["stat-card__label"]}>Room Occupancy</div>
           <div className={styles["stat-card__value"]}>
             {stats.occupiedRooms}/{stats.totalRooms}
@@ -120,7 +122,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className={styles["stat-card"]}>
-          <div className={styles["stat-card__icon"]}>🍽️</div>
+          <IconBox icon={UtensilsCrossed} color="orange" size="xl" className={styles["stat-card__icon"]} />
           <div className={styles["stat-card__label"]}>Today&apos;s Orders</div>
           <div className={styles["stat-card__value"]}>{stats.todayOrders}</div>
           <div
@@ -131,7 +133,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className={styles["stat-card"]}>
-          <div className={styles["stat-card__icon"]}>📈</div>
+          <IconBox icon={TrendingUp} color="purple" size="xl" className={styles["stat-card__icon"]} />
           <div className={styles["stat-card__label"]}>Month Revenue</div>
           <div className={styles["stat-card__value"]}>
             {formatCurrency(stats.monthRevenue)}
@@ -144,7 +146,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className={styles["stat-card"]}>
-          <div className={styles["stat-card__icon"]}>🧾</div>
+          <IconBox icon={Receipt} color="red" size="xl" className={styles["stat-card__icon"]} />
           <div className={styles["stat-card__label"]}>Month Expenses</div>
           <div className={styles["stat-card__value"]}>
             {formatCurrency(stats.monthExpenses)}
@@ -187,7 +189,7 @@ export default async function DashboardPage() {
                 gap: "var(--space-3)",
               }}
             >
-              🏨 New Check-In
+              <Hotel className="inline-block mr-2" size={20}/> New Check-In
             </a>
             <a
               href="/dashboard/restaurant/new-order"
@@ -203,7 +205,7 @@ export default async function DashboardPage() {
                 gap: "var(--space-3)",
               }}
             >
-              🍽️ New Restaurant Order
+              <UtensilsCrossed className="inline-block mr-2" size={20}/> New Restaurant Order
             </a>
             <a
               href="/dashboard/expenses"
@@ -219,7 +221,7 @@ export default async function DashboardPage() {
                 gap: "var(--space-3)",
               }}
             >
-              🧾 Add Expense
+              <Receipt className="inline-block mr-2" size={20}/> Add Expense
             </a>
           </div>
         </div>

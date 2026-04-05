@@ -12,6 +12,7 @@ import { showToast } from "@/components/ui/Toast";
 import { DEPARTMENTS } from "@/lib/utils/constants";
 import type { OrgMember } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
+import { Users } from "lucide-react";
 
 export default function StaffPage() {
   const { org } = useOrg();
@@ -87,7 +88,7 @@ export default function StaffPage() {
       {loading ? (
         <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }} />
       ) : (
-        <Table columns={columns} data={members as unknown as Record<string, unknown>[]} emptyMessage="No staff members" emptyIcon="👥" />
+        <Table columns={columns} data={members as unknown as Record<string, unknown>[]} emptyMessage="No staff members" emptyIcon={<Users size={48} className="opacity-50" />} />
       )}
 
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Staff Member" footer={

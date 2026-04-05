@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useOrg } from "@/hooks/useOrg";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import dashStyles from "../../dashboard.module.css";
+import { Banknote, Receipt, TrendingUp, TrendingDown, Hotel, UtensilsCrossed, Zap } from "lucide-react";
+import { IconBox } from "@/components/ui/IconBox";
 
 interface WeekData {
   label: string;
@@ -111,17 +113,17 @@ export default function ReportsPage() {
           {/* Top stats */}
           <div className={dashStyles["stats-grid"]}>
             <div className={dashStyles["stat-card"]} style={{ borderLeft: "4px solid var(--color-success)" }}>
-              <div className={dashStyles["stat-card__icon"]}>💰</div>
+              <IconBox icon={Banknote} color="green" size="xl" className={dashStyles["stat-card__icon"]} />
               <div className={dashStyles["stat-card__label"]}>Total Revenue</div>
               <div className={dashStyles["stat-card__value"]}>{formatCurrency(totals.revenue)}</div>
             </div>
             <div className={dashStyles["stat-card"]} style={{ borderLeft: "4px solid var(--color-error)" }}>
-              <div className={dashStyles["stat-card__icon"]}>🧾</div>
+              <IconBox icon={Receipt} color="red" size="xl" className={dashStyles["stat-card__icon"]} />
               <div className={dashStyles["stat-card__label"]}>Total Expenses</div>
               <div className={dashStyles["stat-card__value"]}>{formatCurrency(allExpenses)}</div>
             </div>
             <div className={dashStyles["stat-card"]} style={{ borderLeft: `4px solid ${totals.profit >= 0 ? "var(--color-success)" : "var(--color-error)"}` }}>
-              <div className={dashStyles["stat-card__icon"]}>{totals.profit >= 0 ? "📈" : "📉"}</div>
+              <IconBox icon={totals.profit >= 0 ? TrendingUp : TrendingDown} color={totals.profit >= 0 ? "blue" : "orange"} size="xl" className={dashStyles["stat-card__icon"]} />
               <div className={dashStyles["stat-card__label"]}>Net Profit/Loss</div>
               <div className={dashStyles["stat-card__value"]} style={{ color: totals.profit >= 0 ? "var(--color-success)" : "var(--color-error)" }}>
                 {formatCurrency(totals.profit)}
@@ -135,11 +137,11 @@ export default function ReportsPage() {
               <h3 style={{ fontSize: "var(--text-base)", fontWeight: 600, marginBottom: "var(--space-4)" }}>Revenue Breakdown</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm)" }}>
-                  <span>🏨 Room Revenue</span>
+                  <span><Hotel className="inline-block mr-2" size={20}/> Room Revenue</span>
                   <span style={{ fontWeight: 600 }}>{formatCurrency(totals.roomRevenue)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm)" }}>
-                  <span>🍽️ Restaurant Revenue</span>
+                  <span><UtensilsCrossed className="inline-block mr-2" size={20}/> Restaurant Revenue</span>
                   <span style={{ fontWeight: 600 }}>{formatCurrency(totals.restaurantRevenue)}</span>
                 </div>
               </div>
@@ -148,15 +150,15 @@ export default function ReportsPage() {
               <h3 style={{ fontSize: "var(--text-base)", fontWeight: 600, marginBottom: "var(--space-4)" }}>Expense Breakdown</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm)" }}>
-                  <span>🧾 Purchases & Supplies</span>
+                  <span><Receipt className="inline-block mr-2" size={20}/> Purchases & Supplies</span>
                   <span style={{ fontWeight: 600 }}>{formatCurrency(totals.expenses)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm)" }}>
-                  <span>💰 Salaries</span>
+                  <span><Banknote className="inline-block mr-2" size={20}/> Salaries</span>
                   <span style={{ fontWeight: 600 }}>{formatCurrency(totals.salaries)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm)" }}>
-                  <span>⚡ Utility Bills</span>
+                  <span><Zap className="inline-block mr-2" size={20}/> Utility Bills</span>
                   <span style={{ fontWeight: 600 }}>{formatCurrency(totals.utilities)}</span>
                 </div>
               </div>
