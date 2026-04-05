@@ -12,7 +12,7 @@ import { showToast } from "@/components/ui/Toast";
 import { formatCurrency, formatDate } from "@/lib/utils/formatters";
 import { DEPARTMENTS } from "@/lib/utils/constants";
 import type { Salary } from "@/types/database";
-import dashStyles from "../dashboard.module.css";
+import dashStyles from "../../dashboard.module.css";
 
 export default function SalariesPage() {
   const { org } = useOrg();

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { ToastContainer } from "@/components/ui/Toast";
 import { useOrg } from "@/hooks/useOrg";
+import { createClient } from "@/lib/supabase/client";
 import styles from "./dashboard.module.css";
 
 const pageTitles: Record<string, string> = {
@@ -34,8 +35,22 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userName, setUserName] = useState("Owner");
   const pathname = usePathname();
   const { org, membership } = useOrg();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const name =
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "Owner";
+        setUserName(name);
+      }
+    });
+  }, []);
 
   const title = pageTitles[pathname] || "Dashboard";
 
@@ -44,8 +59,8 @@ export default function DashboardLayout({
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        orgName={org?.name || "Loading..."}
-        userName={membership?.role || ""}
+        orgName={org?.name || "Royal Hotels"}
+        userName={userName}
         userRole={membership?.role || "staff"}
       />
       <Header
