@@ -9,15 +9,18 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Input";
 import { showToast } from "@/components/ui/Toast";
-import { formatCurrency } from "@/lib/utils/formatters";
+import { formatCurrency, formatDateTime } from "@/lib/utils/formatters";
 import { ROOM_TYPES } from "@/lib/utils/constants";
-import type { Room } from "@/types/database";
+import type { Booking, Room } from "@/types/database";
 import dashStyles from "../../dashboard.module.css";
-import { Hotel } from "lucide-react";
+import { Hotel, Settings } from "lucide-react";
 
 export default function HotelPage() {
   const { org } = useOrg();
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [checkedInBookingsByRoom, setCheckedInBookingsByRoom] = useState<Record<string, Booking>>({});
+  const [prebookedByRoom, setPrebookedByRoom] = useState<Record<string, number>>({});
+  const [prebookedCount, setPrebookedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newRoom, setNewRoom] = useState({
@@ -34,14 +37,121 @@ export default function HotelPage() {
 
   async function fetchRooms() {
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("*")
-      .eq("org_id", org!.id)
-      .order("room_number");
+    const nowIso = new Date().toISOString();
+
+    const [{ data, error }, { data: prebookedBookings, count: prebookedBookingsCount }, { data: checkedInBookings }] = await Promise.all([
+      supabase
+        .from("rooms")
+        .select("*")
+        .eq("org_id", org!.id)
+        .order("room_number"),
+      supabase
+        .from("bookings")
+        .select("id, room_id", { count: "exact" })
+        .eq("org_id", org!.id)
+        .eq("status", "prebooked")
+        .gte("check_in", nowIso),
+      supabase
+        .from("bookings")
+        .select("id, room_id, guest_name, check_in, expected_check_out, rate_per_night, status")
+        .eq("org_id", org!.id)
+        .eq("status", "checked_in")
+        .is("check_out", null)
+        .order("check_in", { ascending: false }),
+    ]);
 
     if (!error && data) setRooms(data);
+
+    const bookingMap: Record<string, Booking> = {};
+    (checkedInBookings || []).forEach((booking) => {
+      if (!bookingMap[booking.room_id]) {
+        bookingMap[booking.room_id] = booking as unknown as Booking;
+      }
+    });
+
+    const prebookedMap: Record<string, number> = {};
+    (prebookedBookings || []).forEach((booking: { room_id: string }) => {
+      prebookedMap[booking.room_id] = (prebookedMap[booking.room_id] || 0) + 1;
+    });
+
+    setCheckedInBookingsByRoom(bookingMap);
+    setPrebookedByRoom(prebookedMap);
+    setPrebookedCount(prebookedBookingsCount || 0);
+
     setLoading(false);
+  }
+
+  async function handleMaintenanceToggle(room: Room) {
+    if (!org?.id) return;
+    if (room.status !== "available" && room.status !== "maintenance") return;
+
+    if (room.status === "available" && (prebookedByRoom[room.id] || 0) > 0) {
+      showToast(
+        `Room ${room.room_number} has upcoming pre-booking(s). Move bookings before setting maintenance.`,
+        "warning"
+      );
+      return;
+    }
+
+    const nextStatus: Room["status"] = room.status === "available" ? "maintenance" : "available";
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("rooms")
+      .update({ status: nextStatus })
+      .eq("id", room.id)
+      .eq("org_id", org.id);
+
+    if (error) {
+      showToast("Unable to update room state: " + error.message, "error");
+      return;
+    }
+
+    showToast(`Room ${room.room_number} set to ${nextStatus}`, "success");
+    fetchRooms();
+  }
+
+  async function handleQuickCheckOut(room: Room) {
+    const activeStay = checkedInBookingsByRoom[room.id];
+    if (!activeStay || !org?.id) {
+      showToast("No active stay found for this room", "warning");
+      return;
+    }
+
+    const supabase = createClient();
+    const checkOut = new Date();
+    const checkIn = new Date(activeStay.check_in);
+    const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
+    const totalAmount = nights * activeStay.rate_per_night;
+
+    const { error: bookingError } = await supabase
+      .from("bookings")
+      .update({
+        check_out: checkOut.toISOString(),
+        total_amount: totalAmount,
+        status: "checked_out",
+        payment_status: "paid",
+      })
+      .eq("id", activeStay.id)
+      .eq("org_id", org.id);
+
+    if (bookingError) {
+      showToast("Unable to close active stay: " + bookingError.message, "error");
+      return;
+    }
+
+    const { error: roomError } = await supabase
+      .from("rooms")
+      .update({ status: "available" })
+      .eq("id", room.id)
+      .eq("org_id", org.id);
+
+    if (roomError) {
+      showToast("Guest checked out but room status update failed", "warning");
+      return;
+    }
+
+    showToast(`Checked out ${activeStay.guest_name}. Total: ${formatCurrency(totalAmount)}`, "success");
+    fetchRooms();
   }
 
   async function addRoom() {
@@ -81,10 +191,26 @@ export default function HotelPage() {
         <div>
           <h2 className={dashStyles["page-header__title"]}>Hotel Rooms</h2>
           <p className={dashStyles["page-header__subtitle"]}>
-            {rooms.filter((r) => r.status === "available").length} of {rooms.length} rooms available
+            {rooms.filter((r) => r.status === "available").length} of {rooms.length} rooms available · {prebookedCount} upcoming pre-bookings
           </p>
         </div>
         <div className={dashStyles["page-header__actions"]}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              window.location.href = "/dashboard/hotel/bookings";
+            }}
+          >
+            History
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              window.location.href = "/dashboard/hotel/check-in?mode=prebook";
+            }}
+          >
+            + Pre-Book Room
+          </Button>
           {nextAvailable && (
             <Button
               variant="secondary"
@@ -117,7 +243,9 @@ export default function HotelPage() {
         </div>
       ) : (
         <div className={dashStyles["stats-grid"]} style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-          {rooms.map((room) => (
+          {rooms.map((room) => {
+            const activeStay = checkedInBookingsByRoom[room.id];
+            return (
             <div
               key={room.id}
               style={{
@@ -126,14 +254,9 @@ export default function HotelPage() {
                 borderLeft: `4px solid ${statusColors[room.status] || "#94a3b8"}`,
                 borderRadius: "var(--radius-lg)",
                 padding: "var(--space-5)",
-                cursor: room.status === "available" ? "pointer" : "default",
+                cursor: "default",
                 transition: "all var(--transition-base)",
                 animation: "slideUp var(--transition-slow) ease forwards",
-              }}
-              onClick={() => {
-                if (room.status === "available") {
-                  window.location.href = `/dashboard/hotel/check-in?room=${room.id}`;
-                }
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
@@ -155,8 +278,46 @@ export default function HotelPage() {
                   Floor {room.floor}
                 </div>
               )}
+
+              {activeStay && (
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", marginTop: "var(--space-2)" }}>
+                  Guest: {activeStay.guest_name} · Checked in {formatDateTime(activeStay.check_in)}
+                </div>
+              )}
+
+              {room.status === "available" && (prebookedByRoom[room.id] || 0) > 0 && (
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", marginTop: "var(--space-2)" }}>
+                  {prebookedByRoom[room.id]} upcoming pre-booking{prebookedByRoom[room.id] > 1 ? "s" : ""}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-3)" }}>
+                {room.status === "available" && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      window.location.href = `/dashboard/hotel/check-in?room=${room.id}`;
+                    }}
+                  >
+                    Check In
+                  </Button>
+                )}
+                {(room.status === "available" || room.status === "maintenance") && (
+                  <Button size="sm" variant="secondary" onClick={() => handleMaintenanceToggle(room)}>
+                    <Settings size={14} style={{ marginRight: "var(--space-1)" }} />
+                    {room.status === "available" ? "Set Repair" : "Mark Available"}
+                  </Button>
+                )}
+                {activeStay && (
+                  <Button size="sm" variant="secondary" onClick={() => handleQuickCheckOut(room)}>
+                    Check Out Guest
+                  </Button>
+                )}
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

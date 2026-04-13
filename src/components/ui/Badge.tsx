@@ -43,6 +43,8 @@ export function getStatusVariant(
     case "checked_in":
     case "active":
       return "info";
+    case "prebooked":
+    case "preparing":
     case "pending":
     case "partial":
       return "warning";

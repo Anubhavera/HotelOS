@@ -61,7 +61,7 @@ export interface Booking {
   payment_mode: PaymentMode | null;
   payment_proof_url: string | null;
   payment_status: "pending" | "partial" | "paid";
-  status: "checked_in" | "checked_out" | "cancelled";
+  status: "prebooked" | "checked_in" | "checked_out" | "cancelled";
   notes: string | null;
   created_by: string;
   created_at: string;
@@ -81,19 +81,45 @@ export interface MenuItem {
   created_at: string;
 }
 
+/**
+ * RestaurantOrder = one KOT (Kitchen Order Ticket).
+ *
+ * A single table session can produce MANY KOTs (each time new items are
+ * ordered, a fresh KOT is created and sent to the kitchen).
+ *
+ * At checkout, all open KOTs for the same table are grouped into one
+ * RestaurantBill (referenced via bill_group_id → restaurant_bills.id).
+ *
+ * Payment info lives on RestaurantBill, NOT on individual KOTs.
+ */
 export interface RestaurantOrder {
   id: string;
   org_id: string;
+  /** Auto-incrementing kitchen ticket number, unique per org */
   kot_number: number;
   table_number: string | null;
+  customer_name: string | null;
   order_type: "dine_in" | "takeaway" | "delivery";
-  status: "active" | "completed" | "cancelled";
+  /** active → kitchen preparing → completed (or cancelled) */
+  status: "active" | "preparing" | "completed" | "cancelled";
   cancel_reason: string | null;
+  /**
+   * @deprecated Kept for backward-compat. Payment mode now belongs on
+   * RestaurantBill. Filled in on existing records only.
+   */
   payment_mode: PaymentMode | null;
+  /**
+   * @deprecated Kept for backward-compat. Now on RestaurantBill.
+   */
+  payment_reference: string | null;
+  /** FK → restaurant_bills.id. Null until the table is checked out. */
+  bill_group_id: string | null;
+  /** Sum of order_items.total_price for this KOT only. */
   total_amount: number;
   notes: string | null;
   created_by: string;
   created_at: string;
+  prepared_at: string | null;
   completed_at: string | null;
   // Joined fields
   items?: OrderItem[];
@@ -107,6 +133,29 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+}
+
+/**
+ * RestaurantBill = the final checkout document.
+ *
+ * Created when the waiter finalizes checkout for a table.
+ * Multiple KOTs (RestaurantOrder rows) share the same bill_group_id,
+ * which points to this table's row.
+ */
+export interface RestaurantBill {
+  id: string;
+  org_id: string;
+  table_number: string | null;
+  customer_name: string;
+  payment_mode: PaymentMode;
+  payment_reference: string | null;
+  notes: string | null;
+  /** Sum of all KOT total_amounts under this bill */
+  total_amount: number;
+  created_by: string;
+  created_at: string;
+  // Joined fields (when fetched with KOTs)
+  kots?: RestaurantOrder[];
 }
 
 // ── Finance ──
@@ -162,7 +211,6 @@ export type PaymentMode = "cash" | "upi" | "card" | "bank_transfer";
 export type UserRole = "owner" | "manager" | "staff";
 
 // ── Dashboard Stats ──
-
 export interface DashboardStats {
   totalRooms: number;
   occupiedRooms: number;

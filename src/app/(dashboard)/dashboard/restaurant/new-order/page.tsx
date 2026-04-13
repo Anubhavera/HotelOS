@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { showToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils/formatters";
-import { PAYMENT_MODES, ORDER_TYPES } from "@/lib/utils/constants";
-import type { MenuItem } from "@/types/database";
+import { ORDER_TYPES } from "@/lib/utils/constants";
+import type { MenuItem, RestaurantOrder } from "@/types/database";
 import dashStyles from "../../../dashboard.module.css";
-import { Receipt } from "lucide-react";
+import { Receipt, ChefHat, Info } from "lucide-react";
 
 interface CartItem {
   menu_item_id: string;
@@ -23,18 +23,29 @@ interface CartItem {
 export default function NewOrderPage() {
   const { org } = useOrg();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  // Used only for informational display of open KOTs for the entered table
+  const [tableKotCount, setTableKotCount] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     table_number: "",
+    customer_name: "",
     order_type: "dine_in",
-    payment_mode: "cash",
   });
 
   useEffect(() => {
     if (!org?.id) return;
     fetchMenu();
   }, [org?.id]);
+
+  // Whenever table_number changes, look up how many open KOTs already exist
+  useEffect(() => {
+    if (!org?.id || !form.table_number.trim()) {
+      setTableKotCount(0);
+      return;
+    }
+    fetchTableKotCount(form.table_number.trim());
+  }, [org?.id, form.table_number]);
 
   async function fetchMenu() {
     const supabase = createClient();
@@ -46,6 +57,18 @@ export default function NewOrderPage() {
       .order("category, name");
 
     if (data) setMenuItems(data);
+  }
+
+  async function fetchTableKotCount(tableNumber: string) {
+    const supabase = createClient();
+    const { count } = await supabase
+      .from("restaurant_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", org!.id)
+      .eq("table_number", tableNumber)
+      .in("status", ["active", "preparing"]);
+
+    setTableKotCount(count ?? 0);
   }
 
   function addToCart(item: MenuItem) {
@@ -90,13 +113,19 @@ export default function NewOrderPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Always create a fresh KOT — never mutate existing KOTs.
+    // Multiple KOTs for the same table are intentional and will be
+    // grouped together into one final bill at checkout time.
     const { data: order, error: orderError } = await supabase
       .from("restaurant_orders")
       .insert({
         org_id: org.id,
-        table_number: form.table_number || null,
+        table_number: form.table_number.trim() || null,
+        customer_name: form.customer_name.trim() || null,
         order_type: form.order_type,
-        payment_mode: form.payment_mode,
+        // payment_mode is NOT collected here — it belongs on the final bill,
+        // not on the kitchen ticket. Set a default for DB non-null constraint.
+        payment_mode: null,
         total_amount: cartTotal,
         status: "active",
         created_by: user?.id,
@@ -105,7 +134,7 @@ export default function NewOrderPage() {
       .single();
 
     if (orderError || !order) {
-      showToast("Failed to create order: " + orderError?.message, "error");
+      showToast("Failed to create KOT: " + orderError?.message, "error");
       setLoading(false);
       return;
     }
@@ -122,9 +151,10 @@ export default function NewOrderPage() {
     const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
 
     if (itemsError) {
-      showToast("Order created but items failed: " + itemsError.message, "error");
+      showToast("KOT created but items failed to save: " + itemsError.message, "error");
     } else {
-      showToast(`KOT created! Total: ${formatCurrency(cartTotal)}`, "success");
+      const tableMsg = form.table_number ? ` for Table ${form.table_number}` : "";
+      showToast(`KOT #${order.kot_number} sent to kitchen${tableMsg} · ${formatCurrency(cartTotal)}`, "success");
     }
 
     setLoading(false);
@@ -138,19 +168,69 @@ export default function NewOrderPage() {
     return acc;
   }, {});
 
+  const showTableHint = form.order_type === "dine_in" && form.table_number.trim() && tableKotCount > 0;
+
   return (
     <form onSubmit={handleSubmit}>
       <div className={dashStyles["content-grid"]}>
-        {/* Left: Menu */}
+        {/* Left: Order Details + Menu */}
         <div>
           <div className={dashStyles["form-section"]}>
-            <div className={dashStyles["form-section__title"]}>Order Details</div>
+            <div className={dashStyles["form-section__title"]}>
+              <ChefHat size={16} style={{ display: "inline", marginRight: "var(--space-2)" }} />
+              New Kitchen Order (KOT)
+            </div>
+
+            {/* Informational banner explaining the KOT model */}
+            <div style={{
+              background: "var(--color-info-subtle, var(--bg-secondary))",
+              border: "1px solid var(--color-info, var(--border-default))",
+              borderRadius: "var(--radius-md)",
+              padding: "var(--space-3) var(--space-4)",
+              marginBottom: "var(--space-4)",
+              display: "flex",
+              gap: "var(--space-2)",
+              alignItems: "flex-start",
+              fontSize: "var(--text-xs)",
+              color: "var(--text-secondary)",
+            }}>
+              <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                Each submission creates a <strong>new KOT</strong> and sends it to the kitchen.
+                If a table orders again later, just submit another KOT — all KOTs for the same
+                table are automatically combined into one final bill at checkout.
+              </span>
+            </div>
+
             <div className={dashStyles["form-grid"]}>
+              <div style={{ position: "relative" }}>
+                <Input
+                  label="Table Number"
+                  placeholder="e.g., 5  (leave blank for takeaway/delivery)"
+                  value={form.table_number}
+                  onChange={(e) => setForm({ ...form, table_number: e.target.value })}
+                />
+                {/* Show hint when there are already open KOTs for this table */}
+                {showTableHint && (
+                  <div style={{
+                    marginTop: "var(--space-1)",
+                    fontSize: "var(--text-xs)",
+                    color: "var(--color-warning, #f59e0b)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-1)",
+                  }}>
+                    <Info size={11} />
+                    Table {form.table_number} already has {tableKotCount} open KOT{tableKotCount > 1 ? "s" : ""}.
+                    This will be KOT #{tableKotCount + 1} for this table — all will be billed together at checkout.
+                  </div>
+                )}
+              </div>
               <Input
-                label="Table Number"
-                placeholder="e.g., 5"
-                value={form.table_number}
-                onChange={(e) => setForm({ ...form, table_number: e.target.value })}
+                label="Customer Name (optional)"
+                placeholder="Walk-in customer"
+                value={form.customer_name}
+                onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
               />
               <Select
                 label="Order Type"
@@ -170,10 +250,21 @@ export default function NewOrderPage() {
             ) : (
               Object.entries(groupedMenu).map(([category, items]) => (
                 <div key={category} style={{ marginBottom: "var(--space-4)" }}>
-                  <h4 style={{ fontSize: "var(--text-sm)", color: "var(--text-tertiary)", fontWeight: 600, marginBottom: "var(--space-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <h4 style={{
+                    fontSize: "var(--text-sm)",
+                    color: "var(--text-tertiary)",
+                    fontWeight: 600,
+                    marginBottom: "var(--space-2)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}>
                     {category}
                   </h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "var(--space-2)" }}>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                    gap: "var(--space-2)",
+                  }}>
                     {items.map((item) => {
                       const inCart = cart.find((c) => c.menu_item_id === item.id);
                       return (
@@ -208,7 +299,7 @@ export default function NewOrderPage() {
           </div>
         </div>
 
-        {/* Right: Cart */}
+        {/* Right: Cart / KOT Preview */}
         <div>
           <div style={{
             background: "var(--bg-elevated)",
@@ -219,12 +310,13 @@ export default function NewOrderPage() {
             top: "calc(var(--header-height) + var(--space-6))",
           }}>
             <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 600, marginBottom: "var(--space-4)" }}>
-              <Receipt className="inline-block mr-2" size={20}/> Order Summary
+              <Receipt className="inline-block mr-2" size={20} />
+              KOT Preview
             </h3>
 
             {cart.length === 0 ? (
               <p style={{ color: "var(--text-tertiary)", fontSize: "var(--text-sm)", textAlign: "center", padding: "var(--space-8)" }}>
-                Tap on menu items to add them
+                Tap on menu items to add them to this KOT
               </p>
             ) : (
               <>
@@ -243,12 +335,12 @@ export default function NewOrderPage() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                       <button type="button" onClick={() => updateQuantity(item.menu_item_id, -1)}
-                        style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--text-sm)" }}>
+                        style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--text-sm)", border: "1px solid var(--border-default)", cursor: "pointer" }}>
                         −
                       </button>
                       <span style={{ fontWeight: 600, minWidth: 20, textAlign: "center" }}>{item.quantity}</span>
                       <button type="button" onClick={() => updateQuantity(item.menu_item_id, 1)}
-                        style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--text-sm)" }}>
+                        style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "var(--text-sm)", border: "1px solid var(--border-default)", cursor: "pointer" }}>
                         +
                       </button>
                     </div>
@@ -258,21 +350,49 @@ export default function NewOrderPage() {
                   </div>
                 ))}
 
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "var(--space-4) 0", fontWeight: 700, fontSize: "var(--text-lg)" }}>
-                  <span>Total</span>
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "var(--space-4) 0",
+                  fontWeight: 700,
+                  fontSize: "var(--text-lg)",
+                }}>
+                  <span>This KOT Total</span>
                   <span style={{ color: "var(--color-primary)" }}>{formatCurrency(cartTotal)}</span>
                 </div>
 
-                <Select
-                  label="Payment Mode"
-                  options={[...PAYMENT_MODES]}
-                  value={form.payment_mode}
-                  onChange={(e) => setForm({ ...form, payment_mode: e.target.value })}
-                />
+                {/* Only show "table running total" hint if data is available */}
+                {showTableHint && (
+                  <div style={{
+                    background: "var(--bg-secondary)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "var(--space-2) var(--space-3)",
+                    marginBottom: "var(--space-3)",
+                    fontSize: "var(--text-xs)",
+                    color: "var(--text-tertiary)",
+                  }}>
+                    Table {form.table_number} session — KOT #{tableKotCount + 1} of {tableKotCount + 1}
+                    &nbsp;(payment collected at checkout)
+                  </div>
+                )}
 
-                <Button type="submit" fullWidth loading={loading} style={{ marginTop: "var(--space-4)" }}>
-                  Create KOT · {formatCurrency(cartTotal)}
+                <Button
+                  type="submit"
+                  fullWidth
+                  loading={loading}
+                  style={{ marginTop: "var(--space-2)" }}
+                >
+                  <ChefHat size={16} style={{ marginRight: "var(--space-2)" }} />
+                  Send to Kitchen · {formatCurrency(cartTotal)}
                 </Button>
+                <p style={{
+                  fontSize: "var(--text-xs)",
+                  color: "var(--text-tertiary)",
+                  textAlign: "center",
+                  marginTop: "var(--space-2)",
+                }}>
+                  Payment is collected at checkout, not here
+                </p>
               </>
             )}
           </div>
