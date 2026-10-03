@@ -38,3 +38,86 @@ test('patched PostCSS retains parsing and plugin transforms used by CSS builds',
   postcss.parse(result.css).walkDecls(declaration => declarations.push([declaration.prop, declaration.value.trim()]));
   assert.deepEqual(declarations, [['--brand', '#fff'], ['color', '#2486cb'], ['margin', '0']]);
 });
+
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const vm = require('node:vm');
+const { createRequire } = require('node:module');
+const { spawnSync } = require('node:child_process');
+const pluginRequire = createRequire(require.resolve('@rollup/plugin-terser'));
+const serialize = pluginRequire('serialize-javascript');
+const { generateSW } = require('workbox-build');
+
+test('patched serializer preserves worker options and rejects overridden RegExp/Date hooks', () => {
+  const options = { text: '</script>', filter: /important/gi, transform: function(value) { return value + 1; } };
+  const decoded = vm.runInNewContext('(' + serialize(options) + ')', {}, { timeout: 1000 });
+  assert.equal(decoded.text, options.text);
+  assert.equal(decoded.filter.test('IMPORTANT'), true);
+  assert.equal(decoded.transform(41), 42);
+
+  const regex = /safe/gi;
+  Object.defineProperty(regex, 'flags', { value: 'g\");this.X=1;//' });
+  const context = vm.createContext({ X: false });
+  const reconstructed = vm.runInContext('(' + serialize({ regex }) + ')', context, { timeout: 1000 });
+  assert.equal(context.X, false);
+  assert.equal(reconstructed.regex.source, 'safe');
+  assert.equal(reconstructed.regex.flags, 'gis');
+
+  const date = new Date('2026-01-02T00:00:00.000Z');
+  const normalDate = vm.runInNewContext('(' + serialize(date) + ')', {}, { timeout: 1000 });
+  assert.equal(normalDate.toISOString(), '2026-01-02T00:00:00.000Z');
+  date.toISOString = () => 'invalid-iso-string';
+  assert.throws(() => serialize({ date }), /Invalid Date ISO string/);
+
+  // Isolate this synchronous DoS regression: a future vulnerable dependency
+  // must time out instead of hanging the entire test process.
+  const child = spawnSync(process.execPath, ['-e', `
+    const serialize = require(${JSON.stringify(pluginRequire.resolve('serialize-javascript'))});
+    const value = Object.create(Array.prototype);
+    value.length = 1_000_000_000;
+    value[0] = 'first';
+    process.stdout.write(serialize(value));
+  `], { encoding: 'utf8', timeout: 5000 });
+  assert.ifError(child.error);
+  assert.equal(child.status, 0, child.stderr);
+  const roundtrip = vm.runInNewContext('(' + child.stdout + ')', {}, { timeout: 1000 });
+  assert.equal(roundtrip.length, 1_000_000_000);
+  assert.equal(roundtrip[0], 'first');
+});
+
+test('existing Workbox Rollup/Terser consumers generate a working production service worker', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'hotel-sw-compatibility-'));
+  try {
+    await fs.writeFile(path.join(dir, 'app.js'), 'globalThis.fixtureAnswer = 42;');
+    await fs.writeFile(path.join(dir, 'offline.html'), '<!doctype html><title>Offline fixture</title>');
+    const result = await generateSW({
+      globDirectory: dir, globPatterns: ['*.js', '*.html'],
+      swDest: path.join(dir, 'sw.js'), inlineWorkboxRuntime: true, mode: 'production',
+      runtimeCaching: [{
+        urlPattern: /^https:\/\/cdn\.example\.test\/images\/.*$/i,
+        handler: 'CacheFirst', options: { cacheName: 'image-fixture-cache' },
+      }],
+    });
+    assert.equal(result.count, 2);
+    assert.deepEqual(result.warnings, []);
+    const source = await fs.readFile(path.join(dir, 'sw.js'), 'utf8');
+    assert.ok(source.includes('app.js'));
+    assert.ok(source.includes('offline.html'));
+    assert.ok(source.includes('image-fixture-cache'));
+    const listeners = [];
+    const location = { origin: 'https://fixture.example.test', href: 'https://fixture.example.test/sw.js' };
+    const self = {
+      location, registration: { scope: 'https://fixture.example.test/' },
+      addEventListener: (name) => listeners.push(name),
+      clients: { claim: async () => undefined }, skipWaiting: async () => undefined,
+    };
+    vm.runInNewContext(source, {
+      self, location, navigator: { userAgent: 'offline-fixture' },
+      URL, Request, Response, Headers, console, setTimeout, clearTimeout,
+    }, { timeout: 1000 });
+    for (const event of ['install', 'activate', 'fetch']) assert.ok(listeners.includes(event), event);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});

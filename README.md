@@ -72,8 +72,12 @@ type-check and production-build checks are available independently.
 Build-tool dependencies also receive compatible security refreshes: Babel 7,
 HumanFS 0.16, Baseline Browser Mapping 2, Browserslist 4, fast-uri 3 and js-yaml 4.
 Brace Expansion overrides retain each existing major (1.1.21, 2.1.7, 5.0.12).
-Two upstream development/build dependencies retain advisories: unpatched Braces 3.0.3
-and Serialize JavaScript 6.0.2 in Workbox's pinned Rollup plugin. Serialize JavaScript
-requires a 7.x migration; no such major substitution is forced into the existing
-PWA toolchain. Other full-audit findings cascade from these two dependencies.
-Production-only audit is clear at the time of verification.
+Serialize JavaScript is overridden to 7.0.5 after verifying that its CommonJS
+callable API and worker-option serialization remain compatible with the actual
+Workbox/Rollup Terser consumer. Its Node 20 requirement fits the app's existing
+Node 20.9 minimum. The offline dependency suite now checks legitimate option
+roundtrips, spoofed RegExp/Date input handling, bounded array-like serialization,
+and actual production service-worker generation and lifecycle registration.
+No Workbox/Rollup plugin upgrade is needed for this tested override.
+Unpatched Braces 3.0.3 remains in development/build tooling; other full-audit
+findings cascade from it. Production-only audit is clear at verification time.
