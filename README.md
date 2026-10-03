@@ -53,3 +53,18 @@ room state, and restaurant item failure rollback/price tampering.
 These checks do not replace an authenticated Supabase integration test, mobile
 UI/PWA review or production migration review. Other historical browser mutations
 still exist; this change does not claim every write uses a Server Action.
+
+## Dependency security patches
+
+Use Node 20.9 or newer (Node 22 LTS is used for verification). Next.js stays
+on 15.5.27 with matching ESLint tooling. Its pinned PostCSS and optional Sharp
+dependencies are overridden to tested patched versions 8.5.28 and 0.35.4;
+remove these overrides only when the framework resolves equally patched
+versions itself. The lockfile also refreshes compatible Nano ID and ws releases.
+`npm run test:dependencies` exercises the actual Next image optimizer with a PNG input
+and PNG, JPEG, WebP and AVIF outputs and the PostCSS parse/transform pipeline.
+It runs entirely offline and does not connect to Supabase.
+
+The historical `npm run lint` command currently opens ESLint setup because
+this repository has no ESLint configuration. It is not a completed lint gate;
+type-check and production-build checks are available independently.
