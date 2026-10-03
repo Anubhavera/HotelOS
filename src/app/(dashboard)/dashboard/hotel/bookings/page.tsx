@@ -84,7 +84,6 @@ export default function BookingsPage() {
       .eq("id", booking.id);
 
     if (!error) {
-      await supabase.from("rooms").update({ status: "available" }).eq("id", booking.room_id);
       showToast(`Checked out! Total: ${formatCurrency(totalAmount)} (${nights} nights)`, "success");
       fetchBookings();
     } else {
@@ -105,11 +104,6 @@ export default function BookingsPage() {
       showToast("Could not start stay: " + bookingError.message, "error");
       return;
     }
-
-    await supabase
-      .from("rooms")
-      .update({ status: "occupied" })
-      .eq("id", booking.room_id);
 
     showToast(`${booking.guest_name} has been checked in`, "success");
     fetchBookings();

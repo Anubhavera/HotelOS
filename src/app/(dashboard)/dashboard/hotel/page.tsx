@@ -16,7 +16,8 @@ import dashStyles from "../../dashboard.module.css";
 import { Hotel, Settings } from "lucide-react";
 
 export default function HotelPage() {
-  const { org } = useOrg();
+  const { org, membership } = useOrg();
+  const canManageRooms = membership?.role === "owner" || membership?.role === "manager";
   const [rooms, setRooms] = useState<Room[]>([]);
   const [checkedInBookingsByRoom, setCheckedInBookingsByRoom] = useState<Record<string, Booking>>({});
   const [prebookedByRoom, setPrebookedByRoom] = useState<Record<string, number>>({});
@@ -83,7 +84,7 @@ export default function HotelPage() {
 
   async function handleMaintenanceToggle(room: Room) {
     if (!org?.id) return;
-    if (room.status !== "available" && room.status !== "maintenance") return;
+    if (!canManageRooms || (room.status !== "available" && room.status !== "maintenance")) return;
 
     if (room.status === "available" && (prebookedByRoom[room.id] || 0) > 0) {
       showToast(
@@ -139,23 +140,12 @@ export default function HotelPage() {
       return;
     }
 
-    const { error: roomError } = await supabase
-      .from("rooms")
-      .update({ status: "available" })
-      .eq("id", room.id)
-      .eq("org_id", org.id);
-
-    if (roomError) {
-      showToast("Guest checked out but room status update failed", "warning");
-      return;
-    }
-
     showToast(`Checked out ${activeStay.guest_name}. Total: ${formatCurrency(totalAmount)}`, "success");
     fetchRooms();
   }
 
   async function addRoom() {
-    if (!org?.id || !newRoom.room_number || !newRoom.rate_per_night) return;
+    if (!canManageRooms || !org?.id || !newRoom.room_number || !newRoom.rate_per_night) return;
 
     const supabase = createClient();
     const { error } = await supabase.from("rooms").insert({
@@ -221,7 +211,7 @@ export default function HotelPage() {
               <Hotel className="inline-block mr-2" size={20}/> Next Empty: Room {nextAvailable.room_number}
             </Button>
           )}
-          <Button onClick={() => setShowAddModal(true)}>+ Add Room</Button>
+          {canManageRooms && <Button onClick={() => setShowAddModal(true)}>+ Add Room</Button>}
         </div>
       </div>
 
@@ -303,7 +293,7 @@ export default function HotelPage() {
                     Check In
                   </Button>
                 )}
-                {(room.status === "available" || room.status === "maintenance") && (
+                {canManageRooms && (room.status === "available" || room.status === "maintenance") && (
                   <Button size="sm" variant="secondary" onClick={() => handleMaintenanceToggle(room)}>
                     <Settings size={14} style={{ marginRight: "var(--space-1)" }} />
                     {room.status === "available" ? "Set Repair" : "Mark Available"}

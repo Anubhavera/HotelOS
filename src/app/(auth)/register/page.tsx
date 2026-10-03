@@ -62,6 +62,7 @@ export default function RegisterPage() {
           org_slug: slugify(orgName) || "hotel",
         });
         if (orgError) {
+          await supabase.auth.signOut({ scope: "local" });
           setError("Failed to set up organization: " + orgError.message);
           return;
         }

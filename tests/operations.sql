@@ -35,5 +35,17 @@ UPDATE public.bookings SET status='checked_out',check_out='2026-10-02T10:00Z' WH
 DO $$ BEGIN
  IF (SELECT status FROM public.rooms WHERE id=current_setting('test.room')::uuid) <> 'available' THEN RAISE EXCEPTION 'Room not released atomically'; END IF;
 END $$;
+-- Reassign a future pre-booking within the same tenant, as the UI allows.
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+INSERT INTO public.rooms(org_id,room_number,rate_per_night) VALUES(current_setting('test.org_b')::uuid,'102',100);
+SELECT set_config('test.room2',(SELECT id::text FROM public.rooms WHERE room_number='102'),false);
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+INSERT INTO public.bookings(org_id,room_id,guest_name,guest_phone,check_in,expected_check_out,rate_per_night,status)
+ VALUES(current_setting('test.org_b')::uuid,current_setting('test.room')::uuid,'Future guest','123','2027-01-01T12:00Z','2027-01-03T11:00Z',100,'prebooked');
+UPDATE public.bookings SET room_id=current_setting('test.room2')::uuid WHERE guest_name='Future guest';
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.bookings WHERE guest_name='Future guest' AND room_id=current_setting('test.room2')::uuid) THEN RAISE EXCEPTION 'Pre-booking move rejected'; END IF;
+ IF EXISTS(SELECT 1 FROM public.rooms WHERE id IN(current_setting('test.room')::uuid,current_setting('test.room2')::uuid) AND status <> 'available') THEN RAISE EXCEPTION 'Pre-booking move changed occupancy'; END IF;
+END $$;
 RESET ROLE;
 SELECT 'atomic operations regression checks passed';

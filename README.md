@@ -24,6 +24,15 @@ room references, and updates room occupancy within the booking transaction.
 Before applying it, review existing bookings for overlaps, inverted date windows
 and mismatched room/organization references. Existing invalid rows cause the
 migration to fail instead of silently dropping business data.
+Migration008 preserves same-organization pre-booking room reassignment and locks
+both rooms in a consistent order. Booking mutations own occupancy; browser checkout
+and check-in no longer send a later independent room update.
+Migration009 enforces the app’s existing one-workspace-per-account model. Review
+any historical multiple-workspace memberships before applying it. Invited staff
+keep their assigned workspace during first-login setup; accounts cannot be added
+to a second workspace without an explicit future workspace-switching feature.
+Duplicate hotel names get unique organization slugs, and failed setup signs out
+locally so the user can retry sign-in.
 Restaurant KOT creation now uses `create_restaurant_order` so the header and all
 menu items commit together, using the database's menu prices.
 

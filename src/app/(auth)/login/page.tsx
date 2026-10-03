@@ -40,6 +40,7 @@ export default function LoginPage() {
           org_slug: slugify(pendingOrgName) || "hotel",
         });
         if (setupError) {
+          await supabase.auth.signOut({ scope: "local" });
           setError("Unable to finish organization setup: " + setupError.message);
           return;
         }

@@ -45,6 +45,10 @@ END $$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
 DO $$ BEGIN
  BEGIN
+  PERFORM public.add_org_member(current_setting('test.org_b')::uuid,'owner-a@example.test','staff','test');
+  RAISE EXCEPTION 'Second organization membership accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
   PERFORM public.add_org_member(current_setting('test.org_b')::uuid,'owner-a@example.test','owner','test');
   RAISE EXCEPTION 'Second owner role allowed';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
@@ -52,6 +56,19 @@ DO $$ BEGIN
   PERFORM public.add_org_member(current_setting('test.org_a')::uuid,'staff@example.test','staff','test');
   RAISE EXCEPTION 'Cross-org invitation allowed';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+DO $$ BEGIN
+ IF public.create_owner_organization('Ignored pending org','ignored-pending-org') <> current_setting('test.org_b')::uuid THEN
+  RAISE EXCEPTION 'Invited staff setup changed workspace'; END IF;
+END $$;
+RESET ROLE;
+INSERT INTO auth.users(id,email,email_confirmed_at) VALUES('00000000-0000-0000-0000-000000000004','same-name@example.test',now());
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+SELECT public.create_owner_organization('Hotel A','hotel-a');
+DO $$ BEGIN
+ IF (SELECT count(*) FROM public.organizations) <> 1 OR (SELECT count(*) FROM public.org_members) <> 1 THEN RAISE EXCEPTION 'Same-name bootstrap failed'; END IF;
 END $$;
 RESET ROLE;
 SELECT 'membership regression checks passed';
