@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { slugify } from "@/lib/utils/formatters";
 import styles from "../auth.module.css";
 
 export default function LoginPage() {
@@ -22,7 +23,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -32,6 +33,18 @@ export default function LoginPage() {
         return;
       }
 
+      const pendingOrgName = authData.user?.user_metadata?.pending_org_name;
+      if (typeof pendingOrgName === "string" && pendingOrgName.trim()) {
+        const { error: setupError } = await supabase.rpc("create_owner_organization", {
+          org_name: pendingOrgName.trim(),
+          org_slug: slugify(pendingOrgName) || "hotel",
+        });
+        if (setupError) {
+          setError("Unable to finish organization setup: " + setupError.message);
+          return;
+        }
+        await supabase.auth.updateUser({ data: { pending_org_name: null } });
+      }
       router.push("/dashboard");
       router.refresh();
     } catch {

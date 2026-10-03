@@ -16,11 +16,14 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [joinExisting, setJoinExisting] = useState(false);
   const router = useRouter();
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setMessage("");
     setLoading(true);
 
     try {
@@ -33,6 +36,7 @@ export default function RegisterPage() {
         options: {
           data: {
             full_name: fullName,
+            pending_org_name: joinExisting ? null : orgName.trim(),
           },
         },
       });
@@ -47,33 +51,20 @@ export default function RegisterPage() {
         return;
       }
 
-      // 2. Create organization
-      const { data: orgData, error: orgError } = await supabase
-        .from("organizations")
-        .insert({
-          name: orgName,
-          slug: slugify(orgName),
-          owner_id: authData.user.id,
-        })
-        .select()
-        .single();
-
-      if (orgError) {
-        setError("Failed to create organization: " + orgError.message);
+      if (!authData.session) {
+        setMessage("Check your email to verify your account, then sign in to finish setup.");
         return;
       }
 
-      // 3. Create org membership (owner role)
-      const { error: memberError } = await supabase.from("org_members").insert({
-        org_id: orgData.id,
-        user_id: authData.user.id,
-        role: "owner",
-        department: "management",
-      });
-
-      if (memberError) {
-        setError("Failed to set up membership: " + memberError.message);
-        return;
+      if (!joinExisting) {
+        const { error: orgError } = await supabase.rpc("create_owner_organization", {
+          org_name: orgName.trim(),
+          org_slug: slugify(orgName) || "hotel",
+        });
+        if (orgError) {
+          setError("Failed to set up organization: " + orgError.message);
+          return;
+        }
       }
 
       router.push("/dashboard");
@@ -104,6 +95,7 @@ export default function RegisterPage() {
         </p>
 
         {error && <div className={styles["auth-error"]}>{error}</div>}
+        {message && <p role="status">{message}</p>}
 
         <form className={styles["auth-form"]} onSubmit={handleRegister}>
           <Input
@@ -114,7 +106,8 @@ export default function RegisterPage() {
             onChange={(e) => setFullName(e.target.value)}
             required
           />
-          <Input
+          <label><input type="checkbox" checked={joinExisting} onChange={(e) => setJoinExisting(e.target.checked)} /> Join an existing organization as staff</label>
+          {!joinExisting && <Input
             label="Organization Name"
             type="text"
             placeholder="Royal Hotels"
@@ -122,7 +115,7 @@ export default function RegisterPage() {
             onChange={(e) => setOrgName(e.target.value)}
             required
             helperText="This is your hotel or restaurant name"
-          />
+          />}
           <Input
             label="Email"
             type="email"

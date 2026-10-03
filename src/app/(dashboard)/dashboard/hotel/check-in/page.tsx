@@ -170,13 +170,7 @@ function CheckInForm() {
       return;
     }
 
-    // Immediate check-in occupies the room now. Pre-booking keeps room state unchanged.
-    if (form.booking_mode === "check_in_now") {
-      await supabase
-        .from("rooms")
-        .update({ status: "occupied" })
-        .eq("id", form.room_id);
-    }
+    // The booking trigger updates room state in the same transaction.
 
     if (form.booking_mode === "pre_booking") {
       showToast(

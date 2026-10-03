@@ -111,51 +111,23 @@ export default function NewOrderPage() {
 
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Always create a fresh KOT — never mutate existing KOTs.
-    // Multiple KOTs for the same table are intentional and will be
-    // grouped together into one final bill at checkout time.
-    const { data: order, error: orderError } = await supabase
-      .from("restaurant_orders")
-      .insert({
-        org_id: org.id,
-        table_number: form.table_number.trim() || null,
-        customer_name: form.customer_name.trim() || null,
-        order_type: form.order_type,
-        // payment_mode is NOT collected here — it belongs on the final bill,
-        // not on the kitchen ticket. Set a default for DB non-null constraint.
-        payment_mode: null,
-        total_amount: cartTotal,
-        status: "active",
-        created_by: user?.id,
-      })
-      .select()
-      .single();
+    // The database validates menu ownership/prices and saves the KOT plus
+    // all items in one transaction; a failed item cannot leave an empty ticket.
+    const { data: order, error: orderError } = await supabase.rpc("create_restaurant_order", {
+      oid: org.id,
+      table_label: form.table_number.trim(),
+      customer: form.customer_name.trim(),
+      kind: form.order_type,
+      items: cart.map(({ menu_item_id, quantity }) => ({ menu_item_id, quantity })),
+    }).single<RestaurantOrder>();
 
     if (orderError || !order) {
-      showToast("Failed to create KOT: " + orderError?.message, "error");
+      showToast("Failed to create KOT: " + (orderError?.message || "No ticket returned"), "error");
       setLoading(false);
       return;
     }
-
-    const orderItems = cart.map((c) => ({
-      order_id: order.id,
-      menu_item_id: c.menu_item_id,
-      item_name: c.item_name,
-      quantity: c.quantity,
-      unit_price: c.unit_price,
-      total_price: c.total_price,
-    }));
-
-    const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
-
-    if (itemsError) {
-      showToast("KOT created but items failed to save: " + itemsError.message, "error");
-    } else {
-      const tableMsg = form.table_number ? ` for Table ${form.table_number}` : "";
-      showToast(`KOT #${order.kot_number} sent to kitchen${tableMsg} · ${formatCurrency(cartTotal)}`, "success");
-    }
+    const tableMsg = form.table_number ? ` for Table ${form.table_number}` : "";
+    showToast(`KOT #${order.kot_number} sent to kitchen${tableMsg} · ${formatCurrency(order.total_amount)}`, "success");
 
     setLoading(false);
     window.location.href = "/dashboard/restaurant";

@@ -15,11 +15,11 @@ import dashStyles from "../../../dashboard.module.css";
 import { Users } from "lucide-react";
 
 export default function StaffPage() {
-  const { org } = useOrg();
+  const { org, membership } = useOrg();
   const [members, setMembers] = useState<(OrgMember & { email?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [newStaff, setNewStaff] = useState({ email: "", password: "", role: "staff", department: "front-desk" });
+  const [newStaff, setNewStaff] = useState({ email: "", role: "staff", department: "front-desk" });
 
   useEffect(() => {
     if (!org?.id) return;
@@ -38,30 +38,20 @@ export default function StaffPage() {
   }
 
   async function addStaff() {
-    if (!org?.id || !newStaff.email || !newStaff.password) return;
+    if (!org?.id || membership?.role !== "owner" || !newStaff.email) return;
     const supabase = createClient();
 
-    // Create auth user for staff
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: newStaff.email,
-      password: newStaff.password,
-    });
-    if (authError || !authData.user) {
-      showToast("Failed to create user: " + (authError?.message || "Unknown error"), "error");
-      return;
-    }
-
-    const { error } = await supabase.from("org_members").insert({
-      org_id: org.id,
-      user_id: authData.user.id,
-      role: newStaff.role,
-      department: newStaff.department,
+    const { error } = await supabase.rpc("add_org_member", {
+      oid: org.id,
+      member_email: newStaff.email.trim(),
+      member_role: newStaff.role,
+      member_department: newStaff.department,
     });
     if (error) { showToast(error.message, "error"); return; }
 
     showToast("Staff member added!", "success");
     setShowAdd(false);
-    setNewStaff({ email: "", password: "", role: "staff", department: "front-desk" });
+    setNewStaff({ email: "", role: "staff", department: "front-desk" });
     fetchMembers();
   }
 
@@ -82,7 +72,7 @@ export default function StaffPage() {
           <h2 className={dashStyles["page-header__title"]}>Staff Management</h2>
           <p className={dashStyles["page-header__subtitle"]}>{members.length} members</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>+ Add Staff</Button>
+        {membership?.role === "owner" && <Button onClick={() => setShowAdd(true)}>+ Add Staff</Button>}
       </div>
 
       {loading ? (
@@ -99,7 +89,7 @@ export default function StaffPage() {
       }>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
           <Input label="Email" type="email" placeholder="staff@example.com" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} required />
-          <Input label="Password" type="password" placeholder="Min 6 characters" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} required />
+          <p>Ask the staff member to register using “Join an existing organization” and verify their email first.</p>
           <Select label="Role" options={[{ value: "staff", label: "Staff" }, { value: "manager", label: "Manager" }]} value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })} />
           <Select label="Department" options={[...DEPARTMENTS]} value={newStaff.department} onChange={(e) => setNewStaff({ ...newStaff, department: e.target.value })} />
         </div>
