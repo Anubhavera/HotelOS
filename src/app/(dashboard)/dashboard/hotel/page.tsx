@@ -124,7 +124,8 @@ export default function HotelPage() {
     const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
     const totalAmount = nights * activeStay.rate_per_night;
 
-    const { error: bookingError } = await supabase
+    // Guarded on checked_in: a double tap or second device must not re-stamp check_out and the total.
+    const { data, error: bookingError } = await supabase
       .from("bookings")
       .update({
         check_out: checkOut.toISOString(),
@@ -133,10 +134,17 @@ export default function HotelPage() {
         payment_status: "paid",
       })
       .eq("id", activeStay.id)
-      .eq("org_id", org.id);
+      .eq("org_id", org.id)
+      .eq("status", "checked_in")
+      .select("id");
 
     if (bookingError) {
       showToast("Unable to close active stay: " + bookingError.message, "error");
+      return;
+    }
+    if (!data?.length) {
+      showToast(`${activeStay.guest_name} was already checked out. Rooms refreshed.`, "warning");
+      fetchRooms();
       return;
     }
 

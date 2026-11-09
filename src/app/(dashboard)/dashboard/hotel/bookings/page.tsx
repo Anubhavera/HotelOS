@@ -73,7 +73,8 @@ export default function BookingsPage() {
     const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / 86400000));
     const totalAmount = nights * booking.rate_per_night;
 
-    const { error } = await supabase
+    // Guarded on checked_in: a double tap or stale list must not re-stamp check_out and the total.
+    const { data, error } = await supabase
       .from("bookings")
       .update({
         check_out: checkOut.toISOString(),
@@ -81,13 +82,18 @@ export default function BookingsPage() {
         status: "checked_out",
         payment_status: "paid",
       })
-      .eq("id", booking.id);
+      .eq("id", booking.id)
+      .eq("status", "checked_in")
+      .select("id");
 
-    if (!error) {
-      showToast(`Checked out! Total: ${formatCurrency(totalAmount)} (${nights} nights)`, "success");
+    if (error) {
+      showToast("Check-out failed: " + error.message, "error");
+    } else if (!data?.length) {
+      showToast(`${booking.guest_name} is no longer checked in. List refreshed.`, "warning");
       fetchBookings();
     } else {
-      showToast("Check-out failed: " + error.message, "error");
+      showToast(`Checked out! Total: ${formatCurrency(totalAmount)} (${nights} nights)`, "success");
+      fetchBookings();
     }
   }
 
@@ -95,13 +101,20 @@ export default function BookingsPage() {
     const supabase = createClient();
     const now = new Date().toISOString();
 
-    const { error: bookingError } = await supabase
+    const { data, error: bookingError } = await supabase
       .from("bookings")
       .update({ status: "checked_in", check_in: now, payment_status: "paid" })
-      .eq("id", booking.id);
+      .eq("id", booking.id)
+      .eq("status", "prebooked")
+      .select("id");
 
     if (bookingError) {
       showToast("Could not start stay: " + bookingError.message, "error");
+      return;
+    }
+    if (!data?.length) {
+      showToast(`${booking.guest_name}'s pre-booking was already checked in or cancelled. List refreshed.`, "warning");
+      fetchBookings();
       return;
     }
 

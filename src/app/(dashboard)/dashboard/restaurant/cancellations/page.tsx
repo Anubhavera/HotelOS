@@ -119,16 +119,23 @@ export default function CancellationsPage() {
 
   async function handlePrepare(order: RestaurantOrder) {
     const supabase = createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("restaurant_orders")
       .update({
         status: "preparing",
         prepared_at: order.prepared_at || new Date().toISOString(),
       })
-      .eq("id", order.id);
+      .eq("id", order.id)
+      .in("status", ["active", "preparing"])
+      .select("id");
 
     if (error) {
       showToast("Unable to update kitchen status: " + error.message, "error");
+      return;
+    }
+    if (!data?.length) {
+      showToast(`KOT #${order.kot_number} was already billed or cancelled. List refreshed.`, "warning");
+      fetchOrders();
       return;
     }
     showToast(`KOT #${order.kot_number} is now being prepared`, "info");
@@ -142,13 +149,23 @@ export default function CancellationsPage() {
     }
 
     const supabase = createClient();
-    const { error } = await supabase
+    // A billed (completed) KOT must stay billed, or sales reports stop matching the bill.
+    const { data, error } = await supabase
       .from("restaurant_orders")
       .update({ status: "cancelled", cancel_reason: cancelReason.trim() })
-      .eq("id", showCancel.id);
+      .eq("id", showCancel.id)
+      .in("status", ["active", "preparing"])
+      .select("id");
 
     if (error) {
       showToast("Cancellation failed: " + error.message, "error");
+      return;
+    }
+    if (!data?.length) {
+      showToast(`KOT #${showCancel.kot_number} was already billed or cancelled. List refreshed.`, "warning");
+      setShowCancel(null);
+      setCancelReason("");
+      fetchOrders();
       return;
     }
 
