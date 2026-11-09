@@ -206,55 +206,33 @@ export default function CancellationsPage() {
       return;
     }
 
-    const kotIds = showFinalize.kots.map((k) => k.id);
-    const totalAmount = showFinalize.groupTotal;
-
     setFinalizeLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    // Step 1 — Insert the bill record
-    const { data: bill, error: billError } = await supabase
-      .from("restaurant_bills")
-      .insert({
-        org_id: org.id,
-        table_number: showFinalize.tableNumber,
-        customer_name: finalizeForm.customer_name.trim(),
-        payment_mode: finalizeForm.payment_mode,
-        payment_reference: finalizeForm.payment_reference.trim() || null,
-        notes: finalizeForm.notes.trim() || null,
-        total_amount: totalAmount,
-        created_by: user?.id,
-      })
-      .select()
-      .single();
+    // One transaction (migration 010): the bill and its KOTs commit together, totalled server-side.
+    const { data: bill, error: billError } = await supabase.rpc("finalize_restaurant_bill", {
+      oid: org.id,
+      kot_ids: showFinalize.kots.map((k) => k.id),
+      table_label: showFinalize.tableNumber ?? "",
+      customer: finalizeForm.customer_name.trim(),
+      mode: finalizeForm.payment_mode,
+      reference: finalizeForm.payment_reference.trim(),
+      bill_notes: finalizeForm.notes.trim(),
+    }).single<{ total_amount: number }>();
 
+    if (billError?.message.includes("already billed or cancelled")) {
+      showToast("A KOT on this table changed on another device. Review the refreshed list and bill again.", "warning");
+      setShowFinalize(null);
+      setFinalizeLoading(false);
+      fetchOrders();
+      return;
+    }
     if (billError || !bill) {
       showToast("Failed to create bill: " + billError?.message, "error");
       setFinalizeLoading(false);
       return;
     }
-
-    // Step 2 — Mark all KOTs as completed + link to the bill
-    const { error: updateError } = await supabase
-      .from("restaurant_orders")
-      .update({
-        status: "completed",
-        completed_at: new Date().toISOString(),
-        customer_name: finalizeForm.customer_name.trim(),
-        // Mirror payment info on KOTs for backward-compat queries
-        payment_mode: finalizeForm.payment_mode,
-        payment_reference: finalizeForm.payment_reference.trim() || null,
-        bill_group_id: bill.id,
-        notes: finalizeForm.notes.trim() || null,
-      })
-      .in("id", kotIds);
-
-    if (updateError) {
-      showToast("Bill created but KOTs failed to update: " + updateError.message, "error");
-      setFinalizeLoading(false);
-      return;
-    }
+    const totalAmount = Number(bill.total_amount);
 
     const kotList = showFinalize.kots.map((k) => `#${k.kot_number}`).join(", ");
     if (showFinalize.tableNumber) {
